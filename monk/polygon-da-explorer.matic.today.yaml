@@ -1,0 +1,129 @@
+namespace: /polygon
+
+da-common-node:
+  metadata:
+    defines: metadata
+    name: Data-Avail Testnet
+    description: Data-Avail Testnet
+    email: miguel@polygon.technology
+
+  containers:
+    defines: containers
+    da-node: 
+      image: da
+      image-tag: mat-3347
+      user: root
+      paths:
+        - <- `${base_path}:/da/state`
+        - <- `${keystore_path}:/da/keystore`
+      ports:
+        - <- `0.0.0.0:${p2p_port}:${p2p_port}`
+        - <- `0.0.0.0:${ws_port}:${ws_port}`
+        - <- `0.0.0.0:${rpc_port}:${rpc_port}`
+  variables:
+    defines: variables
+
+    chain_spec:
+      type: string
+      value: '/da/genesis/testnet.chain.spec.raw.json'
+
+    base_path:
+      type: string
+      value: ""
+
+    keystore_path:
+      type: string
+      value: ""
+
+    name:
+      type: string
+      value: DA_VALIDATOR
+
+    node_key:
+      type: string
+      value: 0000000000000000000000000000000000000000000000000000000000000001
+
+    in_peers:
+      type: int
+      value: 10
+
+    out_peers:
+      type: int
+      value: 10
+
+    p2p_port:
+      type: int
+      value: 30333
+
+    ws_port:
+      type: int
+      value: 9944
+
+    rpc_port:
+      type: int
+      value: 9933
+
+    bootnode:
+      type: string
+      value: "" 
+
+    cmds:
+      type: string
+      value: ""
+
+da-validator-1:
+  defines: runnable
+  inherits: ./da-common-node
+  variables:
+    name: MATIC_VALIDATOR_1
+    base_path: "/tmp/state"
+    keystore_path: "/tmp/keystore"
+    node_key: <- `act("polygon/da-vault/", "key", "keynode", "path", "secret/da/val/1")` 
+
+da-validator-2:
+  defines: runnable
+  inherits: ./da-common-node
+  variables:
+    name: MATIC_VALIDATOR_2
+    base_path: "/tmp/state"
+    keystore_path: "/tmp/keystore"
+    node_key: <- `act("polygon/da-vault/", "key", "keynode", "path", "secret/da/val/2")` 
+    cmds: <- `--bootnodes /ip4/${get-hostname("/polygon", "da-validator-1")}/tcp/30333/p2p/12D3KooWK1NcYjwpyRUYVG9tjp7X2iGbrQxNVafC5hJU9mggYTgv`
+
+da-vault:
+  defines: runnable
+  inherits: vault/latest
+  variables:
+    root-token: "da-root-test"
+
+da-validator-1-persistent:
+  defines: runnable
+  inherits: ./da-validator-1
+  volumes:
+    defines: volumes
+    state_val_1:
+      size: 20
+      kind: HDD
+      path: <- $base_path
+    keystore_val_1:
+      size: 1
+      kind: HDD
+      path: <- $keystore_path
+
+da-validator-2-persistent:
+  defines: runnable
+  inherits: ./da-validator-2
+  variables:
+    cmds: <- `--bootnodes /ip4/${get-hostname("/polygon", "da-validator-1-persistent")}/tcp/30333/p2p/12D3KooWK1NcYjwpyRUYVG9tjp7X2iGbrQxNVafC5hJU9mggYTgv`
+  volumes:
+    defines: volumes
+    state_val_1:
+      size: 20
+      kind: HDD
+      path: <- $base_path
+    keystore_val_1:
+      size: 1
+      kind: HDD
+      path: <- $keystore_path
+
+
